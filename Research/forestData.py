@@ -1,13 +1,13 @@
 from netCDF4 import Dataset
 import numpy as np
-from USA_COORD import us_coord
-import NeuNet
+import matplotlib.pyplot as plt
 
-# Retrieve files
+## Retrieve files
 npp_file = Dataset("MODIS_NPP_2002_2017_monthly.nc","r", format="NETCDF4")
 forest_file = Dataset("global_forestAgeClasses_2011.nc","r", format="NETCDF3")
-us_coor = us_coord
-############ Forest Stand Data #####################
+
+## Forest Stand Data
+
 # Age data format => [Class,PFT,lat,lon]
 age_data = forest_file.variables['age']
 # Convert to [Class,SumPFT]
@@ -23,16 +23,36 @@ for i in range(0,len(csPFT)):
 csPFT = np.array(csPFT)
 # 0:Y  1:M   2:O
 ymo_data = np.array([np.sum(csPFT[0:3]),np.sum(csPFT[3:6]),np.sum(csPFT[6:len(csPFT)])],dtype=np.float64)
-# print age_data[0,0,0]
+##
 
-############# NPP Data ############################
-#npp_data = npp_file.variables["NPP"]
-npp_sum = 439344.97 # np.nansum(npp_data[()])
 
-# Train the NeuNet
-signif = NeuNet.ln_train(ymo_data,2000,0.00000000001,npp_sum)
-print signif
 
-print "Estimation Of NeuNet: "+ str(NeuNet.ln_test(signif,ymo_data))
-print "Actual: "+str(npp_sum)
-print "Loss: " +str(abs(NeuNet.ln_test(signif,ymo_data)-npp_sum))
+## NPP Data
+
+# All data
+lat = npp_file.variables['lat'][:]
+lng = npp_file.variables['lon'][:]
+npp_monthly = npp_file.variables['NPP'][:]
+
+## Create Plots
+fig, ax = plt.subplots(2)
+
+# Plot of npp per lat,lng over months
+for latc in range(0,len(lat)):
+    for lonc in range(0,len(lng)):
+        unit_c = []
+        trigger = 0
+        for mon in range(0,192):
+            npp_v = npp_monthly[mon,latc,lonc]
+            if np.isnan(npp_v):
+                unit_c.append([mon,0])
+                # print [mon,0]
+            else:
+                unit_c.append([mon,npp_v])
+                trigger = 1
+                # print [mon, npp_v]
+        unit_c = np.array(unit_c)
+        if trigger == 1:
+            ax[0].plot(unit_c[:,0],unit_c[:,1])
+
+plt.show()
